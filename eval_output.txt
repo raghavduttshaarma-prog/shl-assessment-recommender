@@ -1,0 +1,55 @@
+
+=== C1.md (4 turns) ===
+  Turn 3: recall=0.33  (got 10 recs, ref had 3)
+  Turn 4: recall=0.33  (got 10 recs, ref had 3)
+
+=== C10.md (3 turns) ===
+  Turn 1: recall=0.67  (got 3 recs, ref had 3)
+  Turn 3: recall=1.00  (got 10 recs, ref had 2)
+
+=== C2.md (3 turns) ===
+  Turn 2: recall=0.20  (got 10 recs, ref had 5)
+  Turn 3: recall=0.20  (got 10 recs, ref had 5)
+
+=== C3.md (5 turns) ===
+  Turn 3: recall=0.00  (got 0 recs, ref had 4)
+  Turn 5: recall=0.50  (got 10 recs, ref had 4)
+
+=== C4.md (3 turns) ===
+  Turn 1: recall=0.00  (got 0 recs, ref had 4)
+  Turn 2: recall=0.40  (got 10 recs, ref had 5)
+  Turn 3: recall=0.20  (got 10 recs, ref had 5)
+
+=== C5.md (3 turns) ===
+  Turn 1: recall=0.00  (got 0 recs, ref had 5)
+  Turn 2: recall=0.20  (got 10 recs, ref had 5)
+  Turn 3: recall=0.20  (got 10 recs, ref had 5)
+
+=== C6.md (3 turns) ===
+  Turn 1: recall=1.00  (got 10 recs, ref had 3)
+  Turn 3: recall=0.50  (got 1 recs, ref had 2)
+
+=== C7.md (4 turns) ===
+  Turn 2: REQUEST FAILED: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+  Turn 3: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+  Turn 4: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+
+=== C8.md (3 turns) ===
+  Turn 1: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+  Turn 2: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+  Turn 3: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+
+=== C9.md (7 turns) ===
+  Turn 1: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+  Turn 2: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+  Turn 3: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+  Turn 4: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+  Turn 5: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+  Turn 6: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+  Turn 7: REQUEST FAILED: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+
+=== SUMMARY ===
+Total turns replayed: 38
+Schema failures: 13
+Hallucination failures (name/url not in catalogue): 0
+Mean recall vs reference shortlists: 0.358 over 16 recommend-turns
