@@ -94,17 +94,35 @@ harness regardless of conversational quality.
 ## 5. Evaluation approach
 
 `eval/run_eval.py` parses the 10 provided traces and replays each trace's
-scripted user turns against a running instance of the service, checking (a)
-schema compliance on every response, (b) that every returned name/URL exists
-in the catalogue (zero tolerance — any miss is a hallucination), and (c)
-recall against the reference shortlist shown at each turn that has one. This
-is a *static* replay: it always sends the trace's fixed next line rather than
-reacting to what our agent just said, so it's a regression check during
-development, not a stand-in for the real evaluator's LLM-simulated user (who
-answers *our* clarifying questions, not the reference script's). I relied on
-it to catch schema and hallucination regressions cheaply, and read the
-traces manually to calibrate tone, refusal phrasing, and the
-confirmation/refinement boundary that governs `end_of_conversation`.
+scripted user turns against a running instance of the service, measuring
+four things separately rather than one blended number:
+
+- **Groundedness** — every returned name/URL is checked against the
+  catalogue; zero tolerance, any miss is a hallucination.
+- **Overall response accuracy** — schema compliance on every response
+  (`reply`/`recommendations`/`end_of_conversation` shape and types).
+- **Retrieval quality** — `app.agent.retrieve_candidates()` is called
+  directly (bypassing the LLM and the network entirely) on the same
+  conversation history, to check whether the reference shortlist's items
+  even reach the ~18-item candidate pool the LLM is shown. This is
+  deliberately isolated from recommendation relevance: a gap between the
+  two numbers tells you *where* the bottleneck is — a low retrieval number
+  means the search itself is missing the right items; a high retrieval
+  number paired with a low end-to-end number means the candidates were
+  there but the LLM didn't pick them.
+- **Recommendation relevance** — end-to-end Recall@10 against the
+  reference shortlist (retrieval + LLM selection combined) — the metric
+  the assignment itself specifies.
+
+This is a *static* replay: it always sends the trace's fixed next line
+rather than reacting to what our agent just said, so it's a regression
+check during development, not a stand-in for the real evaluator's
+LLM-simulated user (who answers *our* clarifying questions, not the
+reference script's). I relied on it to catch schema and hallucination
+regressions cheaply, to separate retrieval bugs from prompting bugs via the
+retrieval/end-to-end split, and read the traces manually to calibrate tone,
+refusal phrasing, and the confirmation/refinement boundary that governs
+`end_of_conversation`.
 
 ## 6. What didn't work / changed
 

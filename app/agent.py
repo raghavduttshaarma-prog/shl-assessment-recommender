@@ -112,18 +112,25 @@ def _full_conversation_text(messages: List[ChatMessage]) -> str:
     return " ".join(m.content for m in messages)
 
 
-def _build_catalogue_context(messages: List[ChatMessage]) -> str:
-    """Build relevant catalogue context for the LLM.
+def retrieve_candidates(messages: List[ChatMessage]) -> List[Assessment]:
+    """Return the raw retrieval candidate pool for this conversation so far.
 
     Merges TF-IDF similarity search (for the general "what fits this need"
     case) with an exact name/substring match pass over the FULL
     conversation (so COMPARE questions and follow-ups about a
     previously-mentioned assessment stay grounded even if that assessment
     no longer scores high on pure TF-IDF similarity for the latest turn).
+
+    Exposed as its own function (rather than inlined in
+    _build_catalogue_context) so retrieval quality can be measured
+    separately from end-to-end recommendation quality — see
+    eval/run_eval.py's retrieval-only Recall@K, which checks whether the
+    reference shortlist even makes it into this candidate pool, before the
+    LLM ever gets a chance to pick from it.
     """
     query = _extract_query_from_messages(messages)
     if not query.strip():
-        return "No query provided yet."
+        return []
 
     top_matches = [a for a, _ in catalog.search(query, top_k=16)]
     named_matches = catalog.find_by_substring(_full_conversation_text(messages), limit=6)
@@ -134,7 +141,12 @@ def _build_catalogue_context(messages: List[ChatMessage]) -> str:
         if a.entity_id not in seen:
             seen.add(a.entity_id)
             merged.append(a)
-    merged = merged[:18]  # cap total context size — see to_context_string docstring on token cost
+    return merged[:18]  # cap total context size — see to_context_string docstring on token cost
+
+
+def _build_catalogue_context(messages: List[ChatMessage]) -> str:
+    """Format the retrieval candidate pool as LLM-ready context text."""
+    merged = retrieve_candidates(messages)
 
     if not merged:
         return "No matching assessments found in the catalogue for this query."

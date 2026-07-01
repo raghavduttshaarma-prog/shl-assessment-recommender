@@ -3,13 +3,23 @@ Local evaluation harness for the SHL Assessment Recommender.
 
 Replays the 10 provided GenAI_SampleConversations traces against a running
 instance of the service (default: http://localhost:8000) using the exact
-user messages from each trace, and checks:
+user messages from each trace, and checks four things, matching the
+assignment's own evaluation dimensions:
 
-  - Schema compliance of every /chat response (reply: str, recommendations:
-    list of 0-10 {name,url,test_type}, end_of_conversation: bool).
-  - Every recommended name/url actually exists in data/catalogue.json.
-  - Recall against the reference shortlist shown in the trace, for turns
-    where the trace shows one.
+  - GROUNDEDNESS: every recommended name/url actually exists in
+    data/catalogue.json. Zero tolerance — any miss is a hallucination.
+  - OVERALL RESPONSE ACCURACY: schema compliance of every /chat response
+    (reply: str, recommendations: list of 0-10 {name,url,test_type},
+    end_of_conversation: bool).
+  - RETRIEVAL QUALITY: calls app.agent.retrieve_candidates() directly (no
+    LLM involved) for the same conversation history, and checks whether
+    the reference shortlist's items even make it into that ~18-item
+    candidate pool. This isolates retrieval from the LLM's final choice —
+    a low number here means the search/ranking itself is the bottleneck;
+    a high retrieval number with a low end-to-end recall means the LLM is
+    failing to pick well from good candidates.
+  - RECOMMENDATION RELEVANCE: Recall@10 of the final /chat response
+    against the reference shortlist (retrieval + LLM selection combined).
 
 Caveat: this is a STATIC replay (it always sends the trace's scripted user
 message, not a live reactive one), so it is a useful regression check
@@ -31,9 +41,16 @@ import sys
 
 import requests
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, PROJECT_ROOT)  # so `import app.*` works regardless of cwd
+
+from app.catalog import catalog as _catalog  # noqa: E402
+from app.agent import retrieve_candidates  # noqa: E402
+from app.models import ChatMessage  # noqa: E402
+
 BASE_URL = os.environ.get("EVAL_BASE_URL", "http://localhost:8000")
-TRACES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "GenAI_SampleConversations")
-CATALOGUE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "catalogue.json")
+TRACES_DIR = os.path.join(PROJECT_ROOT, "GenAI_SampleConversations")
+CATALOGUE_PATH = os.path.join(PROJECT_ROOT, "data", "catalogue.json")
 
 
 def load_catalogue_names():
@@ -107,7 +124,10 @@ def run():
         print(f"No trace files found in {TRACES_DIR}")
         sys.exit(1)
 
+    _catalog.load()  # separate process from the running server — load our own copy
+
     all_recalls = []
+    all_retrieval_recalls = []
     schema_failures = 0
     hallucination_failures = 0
     total_turns = 0
@@ -150,18 +170,55 @@ def run():
                 recall = recall_at_10([r.get("name", "") for r in recs], turn["ref_names"])
                 if recall is not None:
                     all_recalls.append(recall)
-                    print(f"  Turn {i}: recall={recall:.2f}  (got {len(recs)} recs, ref had {len(turn['ref_names'])})")
+
+                # Retrieval-only check: same conversation history, but call
+                # the retrieval function directly (no LLM, no network) to
+                # see whether the reference items were even candidates.
+                chat_messages = [ChatMessage(role=m["role"], content=m["content"]) for m in messages]
+                candidates = retrieve_candidates(chat_messages)
+                candidate_names = [a.name for a in candidates]
+                retrieval_recall = recall_at_10(candidate_names, turn["ref_names"])
+                if retrieval_recall is not None:
+                    all_retrieval_recalls.append(retrieval_recall)
+
+                print(
+                    f"  Turn {i}: end-to-end recall={recall:.2f} | retrieval-only recall={retrieval_recall:.2f} "
+                    f"(got {len(recs)} recs from {len(candidates)} candidates, ref had {len(turn['ref_names'])})"
+                )
 
             messages.append({"role": "assistant", "content": data.get("reply", "")})
 
     print("\n=== SUMMARY ===")
     print(f"Total turns replayed: {total_turns}")
-    print(f"Schema failures: {schema_failures}")
-    print(f"Hallucination failures (name/url not in catalogue): {hallucination_failures}")
+    print(f"[Overall response accuracy] Schema failures: {schema_failures}")
+    print(f"[Groundedness] Hallucination failures (name/url not in catalogue): {hallucination_failures}")
+    if all_retrieval_recalls:
+        print(
+            f"[Retrieval quality] Mean Recall@18 of raw candidate pool (no LLM): "
+            f"{sum(all_retrieval_recalls)/len(all_retrieval_recalls):.3f} over {len(all_retrieval_recalls)} recommend-turns"
+        )
     if all_recalls:
-        print(f"Mean recall vs reference shortlists: {sum(all_recalls)/len(all_recalls):.3f} over {len(all_recalls)} recommend-turns")
+        print(
+            f"[Recommendation relevance] Mean end-to-end Recall@10 vs reference shortlists: "
+            f"{sum(all_recalls)/len(all_recalls):.3f} over {len(all_recalls)} recommend-turns"
+        )
     else:
         print("No reference shortlists found to score.")
+    if all_retrieval_recalls and all_recalls:
+        gap = sum(all_retrieval_recalls) / len(all_retrieval_recalls) - sum(all_recalls) / len(all_recalls)
+        if gap > 0.15:
+            print(
+                f"NOTE: retrieval recall is {gap:.2f} higher than end-to-end recall — "
+                f"the right items are usually reaching the LLM, but it isn't selecting them. "
+                f"Bottleneck is LLM selection/prompting, not search."
+            )
+        elif gap < -0.05:
+            print(
+                "NOTE: end-to-end recall is higher than retrieval recall, which shouldn't "
+                "normally happen (the LLM can't recommend what it never saw) — check for a bug."
+            )
+        else:
+            print("NOTE: retrieval and end-to-end recall are close — retrieval is the bottleneck, not LLM selection.")
 
 
 if __name__ == "__main__":
